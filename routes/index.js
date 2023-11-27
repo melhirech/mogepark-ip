@@ -4,6 +4,10 @@ const path = require('path')
 const sharp = require('sharp')
 const tinycolor = require("tinycolor2");
 const archiver = require("archiver");
+const axios = require("axios");
+
+const PEXELS_API_KEY = 'OSCvPMha37JH3k7KcmPqG2OOozAP0iiQmQDG2rno0sC54ZrFwaBrS7v2'
+const PEXELS_API_URL = "https://api.pexels.com/v1/search?query=nature&per_page=100"
 
 const imagesPath = path.join(__dirname, '../public/images/')
 const overlayLightPath = imagesPath + 'textOverlayLight.png'
@@ -19,9 +23,11 @@ if (!fs.existsSync(outputDir)){
 
 const processImage = (imageInput, folder) => new Promise(async (resolve, reject) => {
   const { src, height, width, center = true } = imageInput
-    const uri = src.split(';base64,').pop()
-    const imgBuffer = Buffer.from(uri, 'base64');
-  
+
+    const isURL = src.includes(('http'))
+    const uri = isURL ? src : src.split(';base64,').pop()
+    const imgBuffer = isURL ? (await axios({ url: uri, responseType: "arraybuffer" })).data : Buffer.from(uri, 'base64');
+
     const metadata = await sharp(imgBuffer).metadata();
     const { dominant } = await sharp(imgBuffer).stats();
     const { r, g, b } = dominant;
@@ -60,11 +66,6 @@ const archiveImages = () => {
     archive.finalize();
   });
 }
-
-/* GET home page. */
-router.get('/', async function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
 
 router.post('/process', async (req, res) => {
   const {images, folder = 'output'} = req.body
